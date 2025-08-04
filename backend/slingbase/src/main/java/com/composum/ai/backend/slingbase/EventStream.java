@@ -60,7 +60,7 @@ public class EventStream implements GPTCompletionCallback {
         while (true) {
             String line;
             try {
-                line = queue.poll(30, TimeUnit.SECONDS);
+                line = queue.poll(360, TimeUnit.SECONDS);
             } catch (InterruptedException e) {
                 onError(e);
                 throw e;
