@@ -118,10 +118,10 @@ public class GPTChatCompletionServiceImpl extends GPTInternalOpenAIHelper.GPTInt
 
     protected static final Pattern PATTERN_TRY_AGAIN = Pattern.compile("Please try again in (\\d+)s.");
 
-    public static final String DEFAULT_MODEL = "gpt-4o";
-    public static final String DEFAULT_IMAGE_MODEL = "gpt-4o";
+    public static final String DEFAULT_MODEL = "gpt-3.5-turbo";
+    public static final String DEFAULT_IMAGE_MODEL = "gpt-3.5-turbo";
     public static final String DEFAULT_EMBEDDINGS_MODEL = "text-embedding-3-small";
-    public static final String DEFAULT_HIGH_INTELLIGENCE_MODEL = "gpt-4o";
+    public static final String DEFAULT_HIGH_INTELLIGENCE_MODEL = "gpt-3.5-turbo";
 
     protected static final int DEFAULTVALUE_CONNECTIONTIMEOUT = 30;
     protected static final int DEFAULTVALUE_REQUESTTIMEOUT = 300;

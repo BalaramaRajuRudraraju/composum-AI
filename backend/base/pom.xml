@@ -22,6 +22,7 @@
         <wikitext.version>3.0.42</wikitext.version>
         <httpcomponents.client5.version>5.3.1</httpcomponents.client5.version>
         <httpcomponents.core5.version>5.2.5</httpcomponents.core5.version>
+        <langchain4j.version>0.35.0</langchain4j.version>
     </properties>
 
     <dependencies>
@@ -110,6 +111,20 @@
             <artifactId>jsr305</artifactId>
         </dependency>
 
+        <!-- LandChain4j -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-open-ai</artifactId>
+            <version>${langchain4j.version}</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j</artifactId>
+            <version>${langchain4j.version}</version>
+            <scope>compile</scope>
+        </dependency>
+
         <!-- JUnit -->
         <dependency>
             <groupId>junit</groupId>
@@ -154,6 +169,21 @@
                             !org.apache.hc.*,
                             !org.conscrypt.*,
                             !org.brotli.dec.*,
+                            !dev.langchain4j*,
+                            !kotlin.reflect.jvm.internal.*,
+                            !kotlinx.coroutines.*,
+                            !org.bouncycastle.jsse.*,
+                            !org.bouncycastle.jsse.provider.*,
+                            !org.openjsse.javax.net.ssl.*,
+                            !org.openjsse.net.ssl.*,
+                            !sun.security.ssl.*,
+                            !java.lang.runtime.*,
+                            !dalvik.system.*,
+                            !android.net.http.*,
+                            !android.net.ssl.*,
+                            !android.os.*,
+                            !android.security.*,
+                            !android.util.*,
                             *
                         </Import-Package>
                         <Export-Package>
@@ -167,7 +197,9 @@
                             org.eclipse.mylyn.wikitext*,
                             http*;groupId=org.apache.httpcomponents.client5,
                             http*;groupId=org.apache.httpcomponents.core5,
+                            *;scope=compile|runtime
                         </Embed-Dependency>
+                        <Embed-Transitive>true</Embed-Transitive>
                     </instructions>
                 </configuration>
             </plugin>
