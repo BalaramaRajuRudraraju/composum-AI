@@ -1,4 +1,4 @@
-package com.composum.ai.backend.base.service.chat.impl;
+package com.composum.ai.backend.base.service.chat;
 
 import java.util.List;
 
@@ -6,7 +6,6 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import com.composum.ai.backend.base.service.GPTException;
-import com.composum.ai.backend.base.service.chat.GPTConfiguration;
 
 /**
  * Service for generating embeddings using LangChain4J's OpenAI embedding model.

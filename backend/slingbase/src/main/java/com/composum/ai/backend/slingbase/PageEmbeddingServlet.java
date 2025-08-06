@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 import com.composum.ai.backend.base.service.GPTException;
 import com.composum.ai.backend.base.service.chat.GPTConfiguration;
 import com.composum.ai.backend.base.service.chat.GPTEmbeddingService;
+import com.composum.ai.backend.base.service.chat.LangChain4JEmbeddingService;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
@@ -73,20 +74,20 @@ public class PageEmbeddingServlet extends SlingSafeMethodsServlet {
     public static final String PARAM_MAX_DEPTH = "maxDepth";
     public static final int DEFAULT_MAX_DEPTH = 3;
 
-    protected final Gson gson = new GsonBuilder().disableHtmlEscaping().create();
+    protected final transient Gson gson = new GsonBuilder().disableHtmlEscaping().create();
 
     @Reference
-    protected ApproximateMarkdownService markdownService;
+    protected transient ApproximateMarkdownService markdownService;
 
     @Reference
-    protected GPTEmbeddingService embeddingService;
+    protected transient LangChain4JEmbeddingService langChain4JEmbeddingService;
 
-    // TODO: In the future, when Java 17+ is available, replace the above with:
-    // @Reference  
-    // protected LangChain4JEmbeddingService langChain4JEmbeddingService;
+    // Fallback to existing GPTEmbeddingService if LangChain4J is not available
+    @Reference
+    protected transient GPTEmbeddingService embeddingService;
 
     @Reference
-    protected AIConfigurationService aiConfigurationService;
+    protected transient AIConfigurationService aiConfigurationService;
 
     @Override
     protected void doGet(@Nonnull SlingHttpServletRequest request, @Nonnull SlingHttpServletResponse response) 
@@ -124,7 +125,6 @@ public class PageEmbeddingServlet extends SlingSafeMethodsServlet {
             response.getWriter().write(json);
             
         } catch (Exception e) {
-            LOG.error("Error processing page embeddings for path {}", rootResource.getPath(), e);
             throw new ServletException("Error processing page embeddings: " + e.getMessage(), e);
         }
     }
@@ -155,11 +155,20 @@ public class PageEmbeddingServlet extends SlingSafeMethodsServlet {
         GPTConfiguration config = aiConfigurationService.getGPTConfiguration(
             rootResource.getResourceResolver(), rootResource.getPath());
 
-        // Convert texts to embeddings using GPTEmbeddingService
-        // TODO: In the future, when Java 17+ is available, replace with:
-        // List<float[]> embeddings = langChain4JEmbeddingService.generateEmbeddings(texts, config);
+        // Convert texts to embeddings using LangChain4J with chunking and Qdrant storage
         List<String> texts = new ArrayList<>(textToPath.keySet());
-        List<float[]> embeddings = embeddingService.getEmbeddings(texts, config, null);
+        List<float[]> embeddings;
+        
+        try {
+            // Try to use LangChain4J service first (with chunking and Qdrant storage)
+            embeddings = langChain4JEmbeddingService.generateEmbeddings(texts, config);
+            LOG.info("Generated {} embeddings using LangChain4J with chunking", embeddings.size());
+        } catch (Exception e) {
+            // Fallback to existing GPTEmbeddingService if LangChain4J fails
+            LOG.warn("LangChain4J service failed, falling back to GPTEmbeddingService: {}", e.getMessage());
+            embeddings = embeddingService.getEmbeddings(texts, config, null);
+            LOG.info("Generated {} embeddings using fallback GPTEmbeddingService", embeddings.size());
+        }
 
         // Build the result
         PageEmbeddingResult result = new PageEmbeddingResult();
@@ -240,7 +249,7 @@ public class PageEmbeddingServlet extends SlingSafeMethodsServlet {
      * Information about a single page and its embedding.
      */
     public static class PageInfo {
-        public String path;
+        public static String path;
         public String text;
         public float[] embedding;
     }

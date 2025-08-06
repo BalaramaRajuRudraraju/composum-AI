@@ -124,6 +124,12 @@
             <version>${langchain4j.version}</version>
             <scope>compile</scope>
         </dependency>
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-qdrant</artifactId>
+            <version>${langchain4j.version}</version>
+            <scope>compile</scope>
+        </dependency>
 
         <!-- JUnit -->
         <dependency>
@@ -172,18 +178,36 @@
                             !dev.langchain4j*,
                             !kotlin.reflect.jvm.internal.*,
                             !kotlinx.coroutines.*,
-                            !org.bouncycastle.jsse.*,
-                            !org.bouncycastle.jsse.provider.*,
+                            !org.bouncycastle.*,
                             !org.openjsse.javax.net.ssl.*,
                             !org.openjsse.net.ssl.*,
                             !sun.security.ssl.*,
                             !java.lang.runtime.*,
                             !dalvik.system.*,
-                            !android.net.http.*,
-                            !android.net.ssl.*,
+                            !android.net.*,
                             !android.os.*,
                             !android.security.*,
                             !android.util.*,
+                            !lzma.sdk*,
+                            !net.jpountz*,
+                            !org.eclipse.jetty*,
+                            !org.jboss.marshalling.*,
+                            !reactor.blockhound*,
+                            !sun.misc*,
+                            !sun.security.x509*,
+                            !net.jpountz.*,
+                            !io.perfmark.impl.*,
+                            !com.google.protobuf.nano.*,
+                            !com.jcraft.jzlib.*,
+                            !com.ning.compress*,
+                            !com.oracle.svm.core.annotate.*,
+                            !com.sun.jndi.dns.*,
+                            !io.grpc.census.*,
+                            !io.grpc.netty.*,
+                            !io.grpc.okhttp.*,
+                            !io.grpc.override.*,
+                            !com.github.luben.zstd.*,
+                            !com.aayushatharva.brotli4j*,
                             *
                         </Import-Package>
                         <Export-Package>
