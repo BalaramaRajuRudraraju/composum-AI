@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 import javax.annotation.Nonnull;
 import javax.servlet.Servlet;
@@ -74,20 +75,20 @@ public class PageEmbeddingServlet extends SlingSafeMethodsServlet {
     public static final String PARAM_MAX_DEPTH = "maxDepth";
     public static final int DEFAULT_MAX_DEPTH = 3;
 
-    protected final transient Gson gson = new GsonBuilder().disableHtmlEscaping().create();
+    protected final Gson gson = new GsonBuilder().disableHtmlEscaping().create();
 
     @Reference
-    protected transient ApproximateMarkdownService markdownService;
+    protected ApproximateMarkdownService markdownService;
 
     @Reference
-    protected transient LangChain4JEmbeddingService langChain4JEmbeddingService;
+    protected LangChain4JEmbeddingService langChain4JEmbeddingService;
 
     // Fallback to existing GPTEmbeddingService if LangChain4J is not available
     @Reference
-    protected transient GPTEmbeddingService embeddingService;
+    protected GPTEmbeddingService embeddingService;
 
     @Reference
-    protected transient AIConfigurationService aiConfigurationService;
+    protected AIConfigurationService aiConfigurationService;
 
     @Override
     protected void doGet(@Nonnull SlingHttpServletRequest request, @Nonnull SlingHttpServletResponse response) 
@@ -125,6 +126,7 @@ public class PageEmbeddingServlet extends SlingSafeMethodsServlet {
             response.getWriter().write(json);
             
         } catch (Exception e) {
+            LOG.error("Error processing page embeddings for path {}", rootResource.getPath(), e);
             throw new ServletException("Error processing page embeddings: " + e.getMessage(), e);
         }
     }
@@ -160,9 +162,33 @@ public class PageEmbeddingServlet extends SlingSafeMethodsServlet {
         List<float[]> embeddings;
         
         try {
-            // Try to use LangChain4J service first (with chunking and Qdrant storage)
-            embeddings = langChain4JEmbeddingService.generateEmbeddings(texts, config);
-            LOG.info("Generated {} embeddings using LangChain4J with chunking", embeddings.size());
+            // Create PageTextMetadata objects for enhanced processing
+            List<LangChain4JEmbeddingService.PageTextMetadata> pageTexts = new ArrayList<>();
+            for (String text : texts) {
+                String pagePath = textToPath.get(text);
+                Resource pageResource = textToResource.get(text);
+                
+                // Extract page metadata
+                String pageTitle = getPageTitle(pageResource);
+                String pageType = getPageType(pageResource);
+                long lastModified = getLastModified(pageResource);
+                
+                LangChain4JEmbeddingService.PageTextMetadata pageTextMetadata = 
+                    new LangChain4JEmbeddingService.PageTextMetadata(pagePath, text, pageTitle, pageType, lastModified);
+                pageTexts.add(pageTextMetadata);
+            }
+            
+            // Use enhanced LangChain4J service with metadata and Qdrant storage
+            List<LangChain4JEmbeddingService.EmbeddingResult> embeddingResults = 
+                langChain4JEmbeddingService.generateAndStorePageEmbeddings(pageTexts, config);
+            
+            // Extract embeddings from results
+            embeddings = embeddingResults.stream()
+                .map(LangChain4JEmbeddingService.EmbeddingResult::getEmbedding)
+                .collect(Collectors.toList());
+                
+            LOG.info("Generated {} embeddings using LangChain4J with metadata and Qdrant storage", embeddings.size());
+            
         } catch (Exception e) {
             // Fallback to existing GPTEmbeddingService if LangChain4J fails
             LOG.warn("LangChain4J service failed, falling back to GPTEmbeddingService: {}", e.getMessage());
@@ -239,6 +265,77 @@ public class PageEmbeddingServlet extends SlingSafeMethodsServlet {
     }
 
     /**
+     * Extracts the page title from the resource.
+     */
+    protected String getPageTitle(@Nonnull Resource resource) {
+        try {
+            // Try to get title from jcr:title property
+            String title = resource.getValueMap().get("jcr:title", String.class);
+            if (StringUtils.isNotBlank(title)) {
+                return title;
+            }
+            
+            // Fallback to page name
+            Resource page = resource.getName().equals("jcr:content") ? resource.getParent() : resource;
+            return page != null ? page.getName() : "Unknown";
+            
+        } catch (Exception e) {
+            LOG.warn("Could not extract page title from {}: {}", resource.getPath(), e.getMessage());
+            return "Unknown";
+        }
+    }
+
+    /**
+     * Extracts the page type from the resource.
+     */
+    protected String getPageType(@Nonnull Resource resource) {
+        try {
+            // Try to get template or resource type
+            String template = resource.getValueMap().get("cq:template", String.class);
+            if (StringUtils.isNotBlank(template)) {
+                return template;
+            }
+            
+            String resourceType = resource.getResourceType();
+            if (StringUtils.isNotBlank(resourceType)) {
+                return resourceType;
+            }
+            
+            return "cq:Page";
+            
+        } catch (Exception e) {
+            LOG.warn("Could not extract page type from {}: {}", resource.getPath(), e.getMessage());
+            return "Unknown";
+        }
+    }
+
+    /**
+     * Extracts the last modified timestamp from the resource.
+     */
+    protected long getLastModified(@Nonnull Resource resource) {
+        try {
+            // Try to get cq:lastModified first
+            java.util.Calendar lastModified = resource.getValueMap().get("cq:lastModified", java.util.Calendar.class);
+            if (lastModified != null) {
+                return lastModified.getTimeInMillis();
+            }
+            
+            // Fallback to jcr:lastModified
+            lastModified = resource.getValueMap().get("jcr:lastModified", java.util.Calendar.class);
+            if (lastModified != null) {
+                return lastModified.getTimeInMillis();
+            }
+            
+            // Fallback to current time
+            return System.currentTimeMillis();
+            
+        } catch (Exception e) {
+            LOG.warn("Could not extract last modified from {}: {}", resource.getPath(), e.getMessage());
+            return System.currentTimeMillis();
+        }
+    }
+
+    /**
      * Result object containing page embeddings.
      */
     public static class PageEmbeddingResult {
@@ -249,7 +346,7 @@ public class PageEmbeddingServlet extends SlingSafeMethodsServlet {
      * Information about a single page and its embedding.
      */
     public static class PageInfo {
-        public static String path;
+        public String path;
         public String text;
         public float[] embedding;
     }
