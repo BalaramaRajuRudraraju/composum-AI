@@ -30,13 +30,14 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
+import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.qdrant.QdrantEmbeddingStore;
 
 /**
  * Service for generating embeddings using LangChain4J's OpenAI embedding model.
  * This service is independent of Sling and can be used in the backend/base module.
- * 
  * This implementation uses LangChain4J's OpenAiEmbeddingModel to generate embeddings
  * for text content with automatic text chunking, then stores the embeddings in 
  * Qdrant vector database for semantic search and similarity operations.
@@ -161,7 +162,6 @@ public class LangChain4JEmbeddingServiceImpl implements LangChain4JEmbeddingServ
             return allResults;
             
         } catch (Exception e) {
-            LOG.error("Error generating and storing page embeddings with LangChain4J", e);
             throw new GPTException("Failed to generate and store page embeddings using LangChain4J", e);
         }
     }
@@ -178,21 +178,84 @@ public class LangChain4JEmbeddingServiceImpl implements LangChain4JEmbeddingServ
             // Generate embedding for the query text
             Embedding queryEmbedding = embeddingModel.embed(queryText).content();
             
-            // Search for similar embeddings in the vector store
-            // Note: The actual search implementation depends on the LangChain4J version and available APIs
-            // This would use the queryEmbedding to find similar vectors
-            
             LOG.info("Searching for {} similar embeddings for query (embedding dimension: {})", maxResults, queryEmbedding.vector().length);
             
-            // For now, return empty list as the search API may vary by LangChain4J version
+            // Search for similar embeddings in the vector store using EmbeddingSearchRequest
+            EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+                    .queryEmbedding(queryEmbedding)
+                    .maxResults(maxResults)
+                    .minScore(0.75) // Minimum score threshold for similarity
+                    .build();
+            
+            List<EmbeddingMatch<TextSegment>> matches = embeddingStore.search(searchRequest).matches();
+            
+            // Convert matches to EmbeddingSearchResult objects
             List<LangChain4JEmbeddingService.EmbeddingSearchResult> results = new ArrayList<>();
             
-            LOG.debug("Found {} similar embeddings", results.size());
+            for (EmbeddingMatch<TextSegment> match : matches) {
+                TextSegment segment = match.embedded();
+                double score = match.score();
+                
+                // Parse metadata from the enhanced text format
+                String text = segment.text();
+                String[] parts = text.split("\n\n\\[METADATA:");
+                String actualText = parts[0]; // Original text before metadata
+                
+                // Extract metadata if available
+                String pageUrl = "unknown";
+                String pageTitle = "unknown";
+                int chunkIndex = 0;
+                
+                if (parts.length > 1) {
+                    String metadataPart = parts[1];
+                    pageUrl = extractMetadataValue(metadataPart, "URL=");
+                    pageTitle = extractMetadataValue(metadataPart, "Title=");
+                    String chunkStr = extractMetadataValue(metadataPart, "Chunk=");
+                    try {
+                        chunkIndex = Integer.parseInt(chunkStr.replaceAll("\\].*", ""));
+                    } catch (NumberFormatException e) {
+                        // Use default chunk index
+                    }
+                }
+                
+                LangChain4JEmbeddingService.EmbeddingSearchResult result = 
+                    new LangChain4JEmbeddingService.EmbeddingSearchResult(actualText, pageUrl, pageTitle, score, chunkIndex);
+                results.add(result);
+            }
+            
+            LOG.debug("Found {} similar embeddings with scores", results.size());
             return results;
             
         } catch (Exception e) {
             LOG.error("Error searching for similar embeddings", e);
             throw new GPTException("Failed to search for similar embeddings", e);
+        }
+    }
+
+    /**
+     * Extracts metadata values from the formatted metadata string.
+     */
+    @Nonnull
+    protected String extractMetadataValue(@Nonnull String metadataString, @Nonnull String key) {
+        try {
+            int startIndex = metadataString.indexOf(key);
+            if (startIndex == -1) {
+                return "unknown";
+            }
+            startIndex += key.length();
+            
+            int endIndex = metadataString.indexOf(",", startIndex);
+            if (endIndex == -1) {
+                endIndex = metadataString.indexOf("]", startIndex);
+            }
+            if (endIndex == -1) {
+                endIndex = metadataString.length();
+            }
+            
+            return metadataString.substring(startIndex, endIndex).trim();
+        } catch (Exception e) {
+            LOG.warn("Could not extract metadata value for key {}: {}", key, e.getMessage());
+            return "unknown";
         }
     }
 
