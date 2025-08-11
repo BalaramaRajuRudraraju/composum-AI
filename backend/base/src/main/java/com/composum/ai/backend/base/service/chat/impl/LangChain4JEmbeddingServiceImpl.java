@@ -184,7 +184,7 @@ public class LangChain4JEmbeddingServiceImpl implements LangChain4JEmbeddingServ
             EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
                     .queryEmbedding(queryEmbedding)
                     .maxResults(maxResults)
-                    .minScore(0.75) // Minimum score threshold for similarity
+                    .minScore(0.70) // Minimum score threshold for similarity
                     .build();
             
             List<EmbeddingMatch<TextSegment>> matches = embeddingStore.search(searchRequest).matches();

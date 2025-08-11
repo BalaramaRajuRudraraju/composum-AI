@@ -171,7 +171,7 @@ public class SemanticSearchServlet extends SlingSafeMethodsServlet {
         String combinedContext = combineSearchResults(searchResults);
 
         // Step 5: Generate conversational response
-        String answer = generateConversationalResponse(userQuestion, combinedContext, config);
+        String answer = generateConversationalResponse(userQuestion, combinedContext, config, searchResults);
 
         // Build result object
         SemanticSearchResult result = new SemanticSearchResult();
@@ -221,7 +221,8 @@ public class SemanticSearchServlet extends SlingSafeMethodsServlet {
 
         for (int i = 0; i < results.size(); i++) {
             LangChain4JEmbeddingService.EmbeddingSearchResult result = results.get(i);
-            context.append(String.format("Source %d (from %s):\n", i + 1, result.getPageTitle()));
+            context.append(String.format("Source %d (from %s - URL: %s):\n", 
+                i + 1, result.getPageTitle(), result.getPageUrl()));
             context.append(result.getChunkText());
             context.append("\n\n");
         }
@@ -233,20 +234,26 @@ public class SemanticSearchServlet extends SlingSafeMethodsServlet {
      * Step 5: Generates a friendly conversational response using LLM.
      */
     protected String generateConversationalResponse(@Nonnull String userQuestion, @Nonnull String context, 
-                                                   @Nonnull GPTConfiguration config) throws GPTException {
+                                                   @Nonnull GPTConfiguration config, 
+                                                   @Nonnull List<LangChain4JEmbeddingService.EmbeddingSearchResult> searchResults) throws GPTException {
         
         String systemPrompt = "You are a friendly and helpful AI assistant. Your task is to answer the user's question " +
             "based on the provided context information. Follow these guidelines:\n\n" +
             "1. Provide a clear, conversational, and friendly response\n" +
-            "2. Use only the information from the provided context to answer\n" +
-            "3. If the context doesn't contain enough information to answer the question, say " +
+            "2. IMPORTANT: Select and use information from ONLY ONE source that best answers the question\n" +
+            "3. Base your answer exclusively on the content from your selected source\n" +
+            "4. If none of the sources contain enough information to answer the question, say " +
             "\"I don't know the answer to that based on the available information.\"\n" +
-            "4. Be concise but comprehensive\n" +
-            "5. Use a warm, conversational tone\n" +
-            "6. Don't mention that you're using a knowledge base or context - just answer naturally\n\n" +
+            "5. Be concise but comprehensive\n" +
+            "6. Use a warm, conversational tone\n" +
+            "7. Don't mention that you're using a knowledge base or context - just answer naturally\n" +
+            "8. At the end of your response, include the phrase 'For more information, visit: [URL]' where [URL] is the " +
+            "URL of the source you selected to answer the question (the URLs are provided in the context)\n" +
+            "9. Only include the URL of the ONE source you used for your answer\n\n" +
             "Context information:\n" + context;
 
-        String userPrompt = "Please answer this question: " + userQuestion;
+        String userPrompt = "Please answer this question using information from only ONE of the provided sources, " +
+            "and include a link to that specific source page: " + userQuestion;
 
         // For now, use the same configuration - in production, you might want to configure 
         // this to point to your local LLM at localhost:8080
