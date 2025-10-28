@@ -57,6 +57,18 @@ public class ChatCompletionResponse {
     @SerializedName("type")
     private String type;
 
+    /**
+     * Optional obfuscation identifier for the response.
+     */
+    @SerializedName("obfuscation")
+    private String obfuscation;
+
+    /**
+     * Optional prompt filter results applied to the input prompts.
+     */
+    @SerializedName("prompt_filter_results")
+    private List<PromptFilterResult> promptFilterResults;
+
     // Getters and setters
     public String getId() {
         return id;
@@ -117,6 +129,22 @@ public class ChatCompletionResponse {
     /** Special response "ping" from Anthropic Claude that has no actual content. */
     public String getType() {
         return type;
+    }
+
+    public String getObfuscation() {
+        return obfuscation;
+    }
+
+    public void setObfuscation(String obfuscation) {
+        this.obfuscation = obfuscation;
+    }
+
+    public List<PromptFilterResult> getPromptFilterResults() {
+        return promptFilterResults;
+    }
+
+    public void setPromptFilterResults(List<PromptFilterResult> promptFilterResults) {
+        this.promptFilterResults = promptFilterResults;
     }
 
     public enum FinishReason {

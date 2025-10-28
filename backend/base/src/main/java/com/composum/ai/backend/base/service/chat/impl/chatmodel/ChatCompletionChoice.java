@@ -32,6 +32,18 @@ public class ChatCompletionChoice {
     @SerializedName("finish_reason")
     private ChatCompletionResponse.FinishReason finishReason;
 
+    /**
+     * Optional content filter results for this choice.
+     */
+    @SerializedName("content_filter_results")
+    private ContentFilterResults contentFilterResults;
+
+    /**
+     * Optional log probabilities for the tokens in this choice.
+     */
+    @SerializedName("logprobs")
+    private Object logprobs;
+
     // Getters and setters
     public int getIndex() {
         return index;
@@ -66,5 +78,21 @@ public class ChatCompletionChoice {
 
     public void setFinishReason(ChatCompletionResponse.FinishReason finishReason) {
         this.finishReason = finishReason;
+    }
+
+    public ContentFilterResults getContentFilterResults() {
+        return contentFilterResults;
+    }
+
+    public void setContentFilterResults(ContentFilterResults contentFilterResults) {
+        this.contentFilterResults = contentFilterResults;
+    }
+
+    public Object getLogprobs() {
+        return logprobs;
+    }
+
+    public void setLogprobs(Object logprobs) {
+        this.logprobs = logprobs;
     }
 }

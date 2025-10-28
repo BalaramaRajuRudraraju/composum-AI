@@ -443,12 +443,19 @@ public class GPTChatCompletionServiceImpl extends GPTInternalOpenAIHelper.GPTInt
                 if (chunk != null && "ping".equals(chunk.getType())) {
                     return; // Special intermediate message from Anthropic, no actual data.
                 }
-                if (chunk == null || chunk.getChoices() == null || chunk.getChoices().isEmpty()) {
+                if (chunk == null) {
                     LOG.error("No chunks - id {} Cannot deserialize {}", id, line);
                     GPTException gptException = new GPTException("No chunks - cannot deserialize " + line);
                     callback.onError(gptException);
                     throw gptException;
                 }
+                
+                // Handle responses with empty choices (e.g., content filter responses)
+                if (chunk.getChoices() == null || chunk.getChoices().isEmpty()) {
+                    LOG.debug("Response {} from GPT has no choices (content filter or initial response): {}", id, line);
+                    return; // Skip processing but don't treat as error
+                }
+                
                 ChatCompletionChoice choice = chunk.getChoices().get(0);
                 String content = choice.getDelta().getContent();
                 if (content != null && !content.isEmpty()) {
@@ -1026,7 +1033,7 @@ public class GPTChatCompletionServiceImpl extends GPTInternalOpenAIHelper.GPTInt
 
         @Override
         protected int capacityIncrement() {
-            return 10000;
+            return 50000;
         }
 
         @Override
