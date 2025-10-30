@@ -40,10 +40,10 @@ public class AutoTranslateConfigServiceImpl implements AutoTranslateConfigServic
     /**
      * List of properties that should always be translated.
      */
-    public static final List<String> CERTAINLY_TRANSLATABLE_PROPERTIES =
+    protected static final List<String> CERTAINLY_TRANSLATABLE_PROPERTIES =
             Arrays.asList("jcr:title", "jcr:description", "text", "title", "alt", "cq:panelTitle", "shortDescription",
                     "actionText", "accessibilityLabel", "pretitle", "helpMessage",
-                    "dc:title", "dc:description");
+                    "dc:title", "dc:description", "navTitle", "pageTitle");
 
 
     protected static final Pattern PATTERN_HAS_WHITESPACE = Pattern.compile("\\s");
